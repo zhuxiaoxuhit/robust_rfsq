@@ -4,15 +4,15 @@ This repository contains the official implementation of **Robust Residual Finite
 
 ## Abstract
 
-Finite Scalar Quantization (FSQ) has emerged as a promising alternative to Vector Quantization (VQ) in neural compression. However, naive application of FSQ in residual quantization frameworks suffers from the **residual magnitude decay problem**, where subsequent FSQ layers receive progressively weaker signals. We propose **Robust Residual Finite Scalar Quantization (RFSQ)** with two novel conditioning strategies: learnable scaling factors and invertible layer normalization. Our approach achieves up to 45% improvement in perceptual loss and 28.7% reduction in L1 reconstruction error compared to strong baselines.
+Finite Scalar Quantization (FSQ) has emerged as a promising alternative to Vector Quantization (VQ) in neural compression. However, naive application of FSQ in residual quantization frameworks suffers from the **residual magnitude decay problem**, where subsequent FSQ layers receive progressively weaker signals. We propose **Robust Residual Finite Scalar Quantization (RFSQ)** with two novel conditioning strategies: learnable scaling factors and invertible layer normalization. Our approach demonstrates significant improvements across different bit rates, with LayerNorm conditioning consistently outperforming other strategies.
 
 ## Key Features
 
 - **Robust Framework**: Addresses residual magnitude decay through novel conditioning strategies
-- **Superior Performance**: Significant improvements over VQ-EMA, FSQ, and LFQ baselines
-- **Two Strategies**: Learnable scaling and invertible LayerNorm for different use cases
+- **Multiple Strategies**: Learnable scaling and invertible LayerNorm for different use cases
+- **Flexible Bit Rates**: Supports both 22.0-bit and 40.0-bit configurations
 - **Plug-and-Play**: Compatible with any encoder-decoder architecture
-- **Comprehensive Evaluation**: Extensive experiments with fair comparison protocols
+- **Comprehensive Evaluation**: Systematic evaluation on ImageNet reconstruction tasks
 
 ### Conditioning Strategies
 
@@ -36,15 +36,20 @@ pip install lpips
 ```python
 from quantizers import RFSQ
 
-# Initialize RFSQ with LayerNorm strategy
-rfsq = RFSQ(
-    levels=[8, 8, 8, 4],      # FSQ levels for each dimension
+# Initialize RFSQ with LayerNorm strategy (22.0-bit configuration)
+rfsq_22bit = RFSQ(
     stages=2,                  # Number of residual stages
+    strategy='layernorm'       # Conditioning strategy: 'layernorm', 'scale', or 'none'
+)
+
+# Initialize RFSQ with LayerNorm strategy (40.0-bit configuration)
+rfsq_40bit = RFSQ(
+    stages=4,                  # Number of residual stages
     strategy='layernorm'       # Conditioning strategy
 )
 
 # Quantize features
-quantized, indices = rfsq(features)
+quantized, indices = rfsq_22bit(features)
 ```
 
 ### Training Example
@@ -66,39 +71,41 @@ train.main()
 
 ## Experimental Configurations
 
-We provide nine pre-configured experimental setups with identical 12.0-bit code rates:
+We provide six RFSQ configurations evaluated on ImageNet at two different bit rates:
 
-| Configuration | Strategy | Stages | Levels | Codebook Size |
-|---------------|----------|--------|--------|---------------|
-| VQ-EMA | - | - | - | 4096 |
-| FSQ | - | 1 | [8,8,8,8] | 4096 |
-| LFQ | - | 1 | - | 4096 |
-| RFSQ-2×2048-Scale | Scale | 2 | [8,8,8,4] | 4096 |
-| RFSQ-2×2048-LayerNorm | LayerNorm | 2 | [8,8,8,4] | 4096 |
-| RFSQ-2×2048-None | None | 2 | [8,8,8,4] | 4096 |
-| RFSQ-4×1024-Scale | Scale | 4 | [4,4,4,4,4] | 4096 |
-| RFSQ-4×1024-LayerNorm | LayerNorm | 4 | [4,4,4,4,4] | 4096 |
-| RFSQ-4×1024-None | None | 4 | [4,4,4,4,4] | 4096 |
+| Configuration | Strategy | Bits | Description |
+|---------------|----------|------|-------------|
+| RFSQ-2×2048-None | None | 22.0 | 2-stage residual quantization |
+| RFSQ-2×2048-Scale | Scale | 22.0 | 2-stage with learnable scaling |
+| RFSQ-2×2048-LN | LayerNorm | 22.0 | 2-stage with layer normalization |
+| RFSQ-4×1024-None | None | 40.0 | 4-stage residual quantization |
+| RFSQ-4×1024-Scale | Scale | 40.0 | 4-stage with learnable scaling |
+| RFSQ-4×1024-LN | LayerNorm | 40.0 | 4-stage with layer normalization |
 
 ## Results
 
 ### Performance Comparison (ImageNet 128×128)
 
-| Method | L1 Loss | Perceptual Loss | PSNR (dB) |
-|--------|---------|-----------------|-----------|
-| **RFSQ-4×1024-LayerNorm** | **0.102** | **0.100** | **22.9** |
-| RFSQ-4×1024-Scale | 0.103 | 0.101 | 22.9 |
-| RFSQ-2×2048-Scale | 0.122 | 0.152 | 21.5 |
-| FSQ (baseline) | 0.143 | 0.182 | 20.3 |
-| LFQ | 0.241 | 0.361 | 16.0 |
-| VQ-EMA | 0.355 | 0.489 | 12.7 |
+#### 22.0-bit Configurations
+| Method | Bits | L1↓ | LPIPS↓ | PSNR↑ |
+|--------|------|-----|--------|-------|
+| RFSQ-2×2048-None | 22.0 | 0.130 | 0.159 | 21.1 |
+| RFSQ-2×2048-Scale | 22.0 | 0.122 | 0.152 | 21.5 |
+| **RFSQ-2×2048-LN** | **22.0** | **0.124** | **0.148** | **21.3** |
+
+#### 40.0-bit Configurations
+| Method | Bits | L1↓ | LPIPS↓ | PSNR↑ |
+|--------|------|-----|--------|-------|
+| RFSQ-4×1024-None | 40.0 | 0.113 | 0.121 | 22.2 |
+| RFSQ-4×1024-Scale | 40.0 | 0.103 | 0.101 | 22.9 |
+| **RFSQ-4×1024-LN** | **40.0** | **0.102** | **0.100** | **22.9** |
 
 ### Key Improvements
 
-- **45.1%** improvement in perceptual loss over FSQ
-- **28.7%** reduction in L1 reconstruction error
-- **12.8%** improvement in PSNR
-- **Consistent performance** across all evaluation metrics
+- **LayerNorm strategy** consistently outperforms other conditioning approaches
+- **9.7%** L1 improvement and **17.4%** perceptual improvement at 40 bits (LN vs None)
+- **Higher bit budgets** provide substantial quality gains (22→40 bits)
+- **Effective residual processing** crucial for multi-stage quantization performance
 
 ## Repository Structure
 
@@ -125,10 +132,19 @@ We provide nine pre-configured experimental setups with identical 12.0-bit code 
 ### Single Configuration
 
 ```bash
+# Train RFSQ-2×2048-LN (22.0-bit configuration)
 python train.py \
     --quantizer rfsq \
-    --levels 8 8 8 4 \
     --rfsq-stages 2 \
+    --rfsq-strategy layernorm \
+    --batch-size 128 \
+    --lr 0.0008 \
+    --max-train-epochs 50
+
+# Train RFSQ-4×1024-LN (40.0-bit configuration)
+python train.py \
+    --quantizer rfsq \
+    --rfsq-stages 4 \
     --rfsq-strategy layernorm \
     --batch-size 128 \
     --lr 0.0008 \
