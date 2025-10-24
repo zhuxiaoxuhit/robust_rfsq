@@ -162,8 +162,8 @@ If you find this work useful, please consider citing:
 ```bibtex
 @article{zhu2025rfsq,
   title={Robust Residual Finite Scalar Quantization for Neural Compression},
-  author={Zhu, Xiaoxu},
-  journal={arXiv preprint},
+  author={Zhu, Xiaoxu and Li, Jiakui and Zheng, Ken and Zhong, Guiping and Wang, Huimeng and Kang, Shiyin and Lin, Dahua},
+  journal={arXiv preprint arXiv:2508.15860},
   year={2025}
 }
 ```
